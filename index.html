@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SOP Studio">
+<meta name="theme-color" content="#080808">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>SOP Studio</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --bg:#080808; --surface:#111; --surface2:#1a1a1a; --surface3:#222;
+  --border:#2a2a2a; --border2:#333; --text:#f0f0f0; --text-muted:#888;
+  --text-subtle:#444; --accent:#fff;
+  --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+html,body { height:100%; overflow:hidden; }
+body { font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
+  background:var(--bg); color:var(--text); display:flex; flex-direction:column;
+  -webkit-text-size-adjust:100%; }
+.status-spacer { height:var(--safe-top); background:rgba(8,8,8,.95); flex-shrink:0; }
+.app-header { display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px; height:52px; background:rgba(8,8,8,.95);
+  border-bottom:1px solid var(--border); flex-shrink:0;
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
+.logo { font-size:18px; font-weight:800; letter-spacing:-.8px; }
+.logo span { color:var(--text-subtle); font-weight:400; }
+.header-right { display:flex; align-items:center; gap:8px; }
+.header-badge { font-size:10px; background:var(--surface2); border:1px solid var(--border2);
+  color:var(--text-muted); padding:3px 9px; border-radius:100px; font-weight:600; }
+.edit-mode-btn { font-size:12px; padding:5px 11px; border-radius:9px; border:1px solid var(--border2);
+  background:var(--surface2); color:var(--text-muted); cursor:pointer; font-weight:600;
+  -webkit-user-select:none; user-select:none; }
+.edit-mode-btn.active { background:rgba(255,200,0,.12); border-color:rgba(255,200,0,.35); color:#ffc800; }
+.content-area { flex:1; overflow:hidden; position:relative; }
+.section { display:none; height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain; padding:14px 14px 8px; }
+.section.active { display:block; animation:fadeIn .2s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+.bottom-nav { display:flex; background:rgba(12,12,12,.97); border-top:1px solid var(--border);
+  padding-bottom:var(--safe-bottom); flex-shrink:0;
+  backdrop-filter:blur(30px); -webkit-backdrop-filter:blur(30px); }
+.nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:8px 4px; gap:3px; cursor:pointer; border:none; background:none; color:var(--text-subtle);
+  transition:color .15s; min-height:54px; -webkit-user-select:none; user-select:none; }
+.nav-btn.active { color:var(--accent); }
+.nav-btn:active { opacity:.6; }
+.nav-icon { font-size:20px; line-height:1; }
+.nav-label { font-size:10px; font-weight:600; }
+.section-header { margin-bottom:12px; }
+.section-title { font-size:21px; font-weight:800; letter-spacing:-.7px; margin-bottom:2px; }
+.section-subtitle { font-size:12px; color:var(--text-muted); }
+
+/* DIAGRAM */
+.diagram-wrap { background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; margin-bottom:12px; overflow:hidden; position:relative; min-height:60px; }
+.diagram-wrap::before { content:''; position:absolute; inset:0;
+  background-image:linear-gradient(var(--border) 1px,transparent 1px),
+    linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:28px 28px; opacity:.2; pointer-events:none; }
+#diagramSvg { display:block; width:100%; position:relative; z-index:1; }
+.diagram-empty { padding:30px 16px; text-align:center; color:var(--text-muted); }
+.diagram-empty .di { font-size:30px; opacity:.3; margin-bottom:6px; }
+.diagram-empty p { font-size:12px; opacity:.6; }
+
+/* DEVICE LIST */
+.cat-label { font-size:10px; text-transform:uppercase; letter-spacing:1.5px;
+  color:var(--text-subtle); margin:12px 0 5px 2px; font-weight:700; }
+.cat-label:first-child { margin-top:0; }
+.device-item { display:flex; align-items:center; gap:11px; padding:10px 12px;
+  border-radius:11px; cursor:pointer; border:1px solid transparent; margin-bottom:2px; }
+.device-item.selected { border-color:rgba(255,255,255,.2); background:var(--surface2); }
+.device-item:active { opacity:.7; }
+.d-icon { width:37px; height:37px; border-radius:9px; display:flex; align-items:center;
+  justify-content:center; font-size:17px; flex-shrink:0; }
+.cat-video .d-icon   { background:rgba(74,144,226,.12); }
+.cat-audio .d-icon   { background:rgba(226,144,74,.12); }
+.cat-computer .d-icon{ background:rgba(74,226,122,.12); }
+.cat-power .d-icon   { background:rgba(226,74,74,.12); }
+.cat-luci .d-icon    { background:rgba(255,210,0,.1); }
+.d-info { flex:1; min-width:0; }
+.d-name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.d-cat  { font-size:10px; color:var(--text-subtle); margin-top:1px; }
+.d-chevron { color:var(--text-subtle); font-size:15px; flex-shrink:0; }
+.d-del  { color:#e24a4a; font-size:17px; padding:3px 5px; flex-shrink:0; display:none; }
+.edit-mode .d-del { display:block; }
+.edit-mode .d-chevron { display:none; }
+
+/* CONN BADGES */
+.conn-badge { display:inline-block; font-size:8.5px; font-weight:700; padding:2px 7px;
+  border-radius:100px; letter-spacing:.3px; flex-shrink:0; white-space:nowrap; }
+.badge-HDMI  { background:rgba(74,144,226,.2);  color:#4a90e2; }
+.badge-XLR   { background:rgba(226,144,74,.2);  color:#e2904a; }
+.badge-USBC,.badge-USB-C { background:rgba(74,226,122,.2); color:#4ae27a; }
+.badge-AUX   { background:rgba(155,74,226,.2);  color:#9b4ae2; }
+.badge-POWER { background:rgba(226,74,74,.2);   color:#e24a4a; }
+.badge-RCA   { background:rgba(226,212,74,.2);  color:#e2d44a; }
+.badge-SD    { background:rgba(74,226,212,.2);  color:#4ae2d4; }
+.badge-SYNC  { background:rgba(200,200,200,.15);color:#aaa; }
+.badge-DMX   { background:rgba(255,180,0,.15);  color:#ffb400; }
+
+/* ADD BTN */
+.add-btn { display:none; align-items:center; justify-content:center; gap:7px;
+  width:100%; padding:12px; background:var(--surface2); border:1px dashed var(--border2);
+  border-radius:11px; color:var(--text-muted); font-size:13px; font-weight:600;
+  cursor:pointer; margin-top:6px; -webkit-user-select:none; user-select:none; }
+.edit-mode .add-btn { display:flex; }
+.add-btn:active { opacity:.6; }
+
+/* CHECKLIST */
+.checklist-wrap { display:flex; flex-direction:column; gap:9px; }
+.cl-card { background:var(--surface); border:1px solid var(--border); border-radius:13px; overflow:hidden; }
+.cl-card-head { display:flex; align-items:center; gap:10px; padding:13px 13px 11px;
+  border-bottom:1px solid var(--border); -webkit-user-select:none; user-select:none; }
+.cl-card-icon { width:34px; height:34px; border-radius:9px; display:flex; align-items:center;
+  justify-content:center; font-size:16px; background:var(--surface2); flex-shrink:0; cursor:pointer; }
+.cl-card-title { font-size:13px; font-weight:700; }
+.cl-card-count { font-size:10.5px; color:var(--text-muted); margin-top:1px; }
+.cl-card-head-info { flex:1; cursor:pointer; }
+.cl-cat-del { color:#e24a4a; font-size:16px; display:none; padding:2px 4px; cursor:pointer; flex-shrink:0; }
+.edit-mode .cl-cat-del { display:block; }
+.cl-chevron { color:var(--text-subtle); font-size:13px; transition:transform .2s; cursor:pointer; flex-shrink:0; }
+.cl-card.collapsed .cl-chevron { transform:rotate(-90deg); }
+.cl-card.collapsed .cl-items-wrap { display:none; }
+.cl-items-wrap { padding:0 13px 10px; }
+.cl-item { display:flex; align-items:center; gap:10px; padding:9px 0;
+  border-bottom:1px solid var(--border); -webkit-user-select:none; user-select:none; }
+.cl-item:last-of-type { border-bottom:none; }
+.cl-item:active { opacity:.7; }
+.cb { width:21px; height:21px; border:2px solid var(--border2); border-radius:6px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition:all .15s; font-size:11px; font-weight:800; cursor:pointer; }
+.cb.done { background:var(--accent); border-color:var(--accent); color:#000; }
+.cl-text { font-size:13px; flex:1; line-height:1.3; cursor:pointer; }
+.cl-item.done .cl-text { text-decoration:line-through; color:var(--text-subtle); }
+.cl-item-del { color:#e24a4a; font-size:16px; display:none; padding:2px 4px; cursor:pointer; }
+.edit-mode .cl-item-del { display:block; }
+.cl-add-item { display:none; align-items:center; justify-content:center; gap:6px;
+  padding:9px 2px; color:var(--text-subtle); font-size:12px; font-weight:600; cursor:pointer;
+  border-top:1px dashed var(--border); margin-top:2px; }
+.edit-mode .cl-add-item { display:flex; }
+.cl-add-item:active { opacity:.6; }
+.progress-bar { height:3px; background:var(--surface3); border-radius:2px; margin-top:8px; overflow:hidden; }
+.progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width .35s ease; }
+.reset-btn { display:flex; align-items:center; justify-content:center; gap:6px;
+  width:100%; padding:11px; margin-top:12px; background:var(--surface2);
+  border:1px solid var(--border2); border-radius:11px; color:var(--text-muted);
+  font-size:13px; font-weight:600; cursor:pointer; -webkit-user-select:none; user-select:none; }
+.reset-btn:active { opacity:.6; }
+
+/* PROCEDURE */
+.procedure-wrap { display:flex; flex-direction:column; gap:6px; }
+.macro-step { display:flex; align-items:center; gap:11px; padding:12px 13px;
+  border-radius:12px; border:1px solid var(--border); background:var(--surface); }
+.macro-step:active { opacity:.7; }
+.step-num { width:30px; height:30px; border-radius:50%; background:var(--surface2);
+  border:1px solid var(--border2); display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:800; flex-shrink:0; color:var(--text-muted); }
+.step-info { flex:1; cursor:pointer; }
+.step-label { font-size:13px; font-weight:700; }
+.step-sub   { font-size:10.5px; color:var(--text-muted); margin-top:1px; }
+.step-chevron { color:var(--text-subtle); font-size:14px; cursor:pointer; flex-shrink:0; }
+.step-del { color:#e24a4a; font-size:17px; display:none; padding:2px 4px; cursor:pointer; flex-shrink:0; }
+.edit-mode .step-del { display:block; }
+.edit-mode .step-chevron { display:none; }
+
+/* MICRO */
+.micro-step { display:flex; gap:11px; margin-bottom:10px; align-items:flex-start; }
+.micro-step-num { width:23px; height:23px; border-radius:50%; background:var(--surface3);
+  display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800;
+  flex-shrink:0; color:var(--text-muted); }
+.micro-step-text { font-size:13.5px; line-height:1.6; color:var(--text-muted); padding-top:2px; }
+.micro-step-text strong { color:var(--text); font-weight:600; }
+.micro-bullet { display:flex; gap:9px; margin-bottom:9px; }
+.micro-bullet::before { content:'—'; color:var(--text-subtle); flex-shrink:0; }
+.micro-bullet-text { font-size:13.5px; color:var(--text-muted); line-height:1.5; }
+.connection-block { background:var(--surface2); border:1px solid var(--border);
+  border-radius:11px; padding:12px 14px; margin-bottom:8px; }
+.connection-block-title { font-size:13px; font-weight:700; margin-bottom:8px; }
+.connection-block-item { display:flex; align-items:center; gap:7px; font-size:12.5px;
+  color:var(--text-muted); margin-bottom:6px; }
+.connection-block-item:last-child { margin-bottom:0; }
+.arrow { color:var(--text-subtle); }
+.micro-nav { display:flex; gap:8px; margin-top:16px; }
+.micro-nav button { flex:1; padding:11px; background:var(--surface2); border:1px solid var(--border2);
+  border-radius:11px; color:var(--text-muted); font-size:13px; font-weight:600; cursor:pointer; }
+.micro-nav button:active { opacity:.6; }
+
+/* SHEET */
+.sheet-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65);
+  z-index:100; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+.sheet-overlay.visible { display:block; animation:oin .2s ease; }
+@keyframes oin { from{opacity:0} to{opacity:1} }
+.sheet { position:fixed; bottom:0; left:0; right:0; background:var(--surface);
+  border-top-left-radius:22px; border-top-right-radius:22px;
+  border:1px solid var(--border2); border-bottom:none;
+  z-index:101; padding-bottom:var(--safe-bottom); max-height:88vh;
+  display:flex; flex-direction:column;
+  transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1); }
+.sheet.visible { transform:translateY(0); }
+.sheet-handle { width:36px; height:4px; background:var(--border2); border-radius:2px;
+  margin:11px auto 0; flex-shrink:0; }
+.sheet-header { display:flex; align-items:center; gap:11px; padding:13px 17px 11px;
+  border-bottom:1px solid var(--border); flex-shrink:0; }
+.sheet-icon { width:43px; height:43px; border-radius:11px; display:flex; align-items:center;
+  justify-content:center; font-size:21px; background:var(--surface2); flex-shrink:0; }
+.sheet-title { font-size:16px; font-weight:800; letter-spacing:-.3px; }
+.sheet-desc  { font-size:11.5px; color:var(--text-muted); margin-top:2px; }
+.sheet-close { margin-left:auto; color:var(--text-muted); font-size:21px; cursor:pointer; flex-shrink:0; }
+.sheet-body  { overflow-y:auto; -webkit-overflow-scrolling:touch; padding:13px 17px 14px; flex:1; }
+.conn-section-label { font-size:10px; text-transform:uppercase; letter-spacing:1.5px;
+  color:var(--text-subtle); font-weight:700; margin-bottom:7px; }
+.conn-row { display:flex; align-items:center; gap:9px; padding:10px 12px;
+  background:var(--surface2); border-radius:10px; margin-bottom:5px; cursor:pointer; }
+.conn-row:active { opacity:.7; }
+.conn-row-icon { font-size:15px; flex-shrink:0; }
+.conn-row-info { flex:1; min-width:0; }
+.conn-row-name  { font-size:12.5px; font-weight:600; }
+.conn-row-label { font-size:11px; color:var(--text-muted); margin-top:1px; }
+.conn-row-chev  { color:var(--text-subtle); font-size:13px; }
+
+/* MODAL */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.8);
+  z-index:200; align-items:flex-end; }
+.modal-overlay.visible { display:flex; }
+.modal { background:var(--surface); border-top-left-radius:22px; border-top-right-radius:22px;
+  border:1px solid var(--border2); border-bottom:none;
+  width:100%; padding-bottom:calc(var(--safe-bottom)+8px);
+  max-height:92vh; display:flex; flex-direction:column;
+  animation:shup .3s cubic-bezier(.32,.72,0,1); }
+@keyframes shup { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.modal-handle { width:36px; height:4px; background:var(--border2); border-radius:2px;
+  margin:11px auto 0; flex-shrink:0; }
+.modal-header { display:flex; align-items:center; justify-content:space-between;
+  padding:13px 17px 11px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.modal-title { font-size:17px; font-weight:800; }
+.modal-close { font-size:21px; color:var(--text-muted); cursor:pointer; line-height:1; }
+.modal-body   { overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 17px; flex:1; }
+.modal-footer { padding:10px 17px 0; display:flex; gap:7px; flex-shrink:0; }
+.form-group { margin-bottom:14px; }
+.form-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;
+  color:var(--text-muted); margin-bottom:6px; display:block; }
+.form-input,.form-select,.form-textarea {
+  width:100%; padding:11px 13px; background:var(--surface2); border:1px solid var(--border2);
+  border-radius:10px; color:var(--text); font-size:13.5px; font-family:inherit; outline:none;
+  -webkit-appearance:none; appearance:none; }
+.form-textarea { min-height:80px; resize:none; }
+.form-input:focus,.form-select:focus,.form-textarea:focus { border-color:rgba(255,255,255,.3); }
+.form-select option { background:var(--surface2); }
+.form-row { display:flex; gap:8px; }
+.form-row .form-group { flex:1; }
+.conn-list-item { display:flex; align-items:center; gap:8px; padding:8px 11px;
+  background:var(--surface2); border-radius:9px; margin-bottom:4px; }
+.conn-list-text { flex:1; font-size:12px; color:var(--text-muted); }
+.conn-list-del { color:#e24a4a; font-size:16px; cursor:pointer; padding:2px; }
+.conn-add-row { display:grid; grid-template-columns:90px 1fr; gap:6px; margin-top:7px; }
+.conn-add-row2 { display:flex; gap:6px; margin-top:6px; }
+.conn-add-row2 .form-input { flex:1; }
+.btn { padding:12px; border-radius:11px; font-size:13.5px; font-weight:700; cursor:pointer;
+  border:none; flex:1; -webkit-user-select:none; user-select:none; text-align:center; }
+.btn:active { opacity:.7; }
+.btn-primary   { background:var(--accent); color:#000; }
+.btn-secondary { background:var(--surface2); color:var(--text-muted); border:1px solid var(--border2); }
+.btn-danger    { background:rgba(226,74,74,.12); color:#e24a4a; border:1px solid rgba(226,74,74,.25); }
+.bottom-space { height:16px; }
+::-webkit-scrollbar { display:none; }
+
+.install-banner { display:none; position:fixed;
+  bottom:calc(54px + var(--safe-bottom) + 10px); left:12px; right:12px;
+  background:var(--surface2); border:1px solid var(--border2); border-radius:14px;
+  padding:12px 14px; z-index:90; flex-direction:column; gap:8px;
+  box-shadow:0 8px 40px rgba(0,0,0,.5); }
+.install-banner.show { display:flex; }
+.install-row { display:flex; align-items:center; gap:9px; }
+.install-text { flex:1; font-size:12px; color:var(--text-muted); line-height:1.4; }
+.install-text strong { color:var(--text); }
+.install-close { color:var(--text-subtle); font-size:17px; cursor:pointer; }
+.install-steps { font-size:11.5px; color:var(--text-muted); background:var(--surface3);
+  border-radius:9px; padding:9px 11px; line-height:1.7; }
+</style>
+</head>
+<body>
+
+<div class="status-spacer"></div>
+<header class="app-header">
+  <div class="logo">SOP<span>studio</span></div>
+  <div class="header-right">
+    <div class="header-badge" id="sectionLabel">Connessioni</div>
+    <button class="edit-mode-btn" id="editModeBtn" onclick="toggleEditMode()">✏️ Modifica</button>
+  </div>
+</header>
+
+<div class="content-area">
+  <!-- CONNESSIONI -->
+  <section id="schema" class="section active">
+    <div class="section-header">
+      <div class="section-title">Schema Connessioni</div>
+      <div class="section-subtitle" id="schemaSubtitle">Tocca un dispositivo per visualizzarlo</div>
+    </div>
+    <div class="diagram-wrap" id="diagramWrap">
+      <div class="diagram-empty" id="diagEmpty"><div class="di">🔌</div><p>Seleziona un dispositivo</p></div>
+      <svg id="diagramSvg" xmlns="http://www.w3.org/2000/svg" style="display:none"></svg>
+    </div>
+    <div id="deviceList"></div>
+    <button class="add-btn" onclick="openAddDevice()">＋ Aggiungi dispositivo</button>
+    <div class="bottom-space"></div>
+  </section>
+
+  <!-- CHECKLIST -->
+  <section id="checklist" class="section">
+    <div class="section-header">
+      <div class="section-title">Checklist</div>
+      <div class="section-subtitle">Spunta almeno 1 giorno prima</div>
+    </div>
+    <div class="checklist-wrap" id="checklistWrap"></div>
+    <button class="add-btn" onclick="openAddCategory()">＋ Aggiungi categoria</button>
+    <button class="reset-btn" onclick="resetChecklist()">↺ Reset checklist</button>
+    <div class="bottom-space"></div>
+  </section>
+
+  <!-- PROCEDURE -->
+  <section id="procedure" class="section">
+    <div class="section-header">
+      <div class="section-title">Procedure</div>
+      <div class="section-subtitle">Tocca una procedura per i dettagli</div>
+    </div>
+    <div class="procedure-wrap" id="procedureWrap"></div>
+    <button class="add-btn" onclick="openAddStep()">＋ Aggiungi procedura</button>
+    <div class="bottom-space"></div>
+  </section>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="btn-schema"    onclick="showSection('schema','🔌 Connessioni')">
+    <span class="nav-icon">🔌</span><span class="nav-label">Connessioni</span></button>
+  <button class="nav-btn"        id="btn-checklist" onclick="showSection('checklist','☑ Checklist')">
+    <span class="nav-icon">☑️</span><span class="nav-label">Checklist</span></button>
+  <button class="nav-btn"        id="btn-procedure" onclick="showSection('procedure','📋 Procedure')">
+    <span class="nav-icon">📋</span><span class="nav-label">Procedure</span></button>
+</nav>
+
+<!-- SHEET -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header" id="sheetHeader"></div>
+  <div class="sheet-body"   id="sheetBody"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle"></div>
+      <span class="modal-close" onclick="closeModal()">✕</span>
+    </div>
+    <div class="modal-body"   id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<!-- INSTALL BANNER -->
+<div class="install-banner" id="installBanner">
+  <div class="install-row">
+    <span style="font-size:22px">📲</span>
+    <div class="install-text"><strong>Aggiungi alla schermata Home</strong><br>Per usarla come app nativa</div>
+    <span class="install-close" onclick="dismissBanner()">✕</span>
+  </div>
+  <div class="install-steps">1. Tocca <strong>⎙ Condividi</strong> in Safari<br>2. Tocca <strong>"Aggiungi a schermata Home"</strong><br>3. Tocca <strong>Aggiungi</strong> ✅</div>
+</div>
+
+<script>
+// ═══════════════ DATA DEFAULTS ═══════════════
+const DD = {
+  devices: {
+    atem:{id:'atem',name:'ATEM Mini Pro ISO',shortName:'ATEM',icon:'🎬',category:'video',desc:'Video switcher multi-camera',connections:[{to:'sony',type:'HDMI',label:'Camera A input'},{to:'panasonic',type:'HDMI',label:'Camera B input'},{to:'monitor1',type:'HDMI',label:'Preview regia'},{to:'harddisk',type:'USB-C',label:'Registrazione diretta'},{to:'rodecaster',type:'RCA',label:'Audio mix in'},{to:'power',type:'POWER',label:'Alimentazione'}]},
+    rodecaster:{id:'rodecaster',name:'Rodecaster Pro II',shortName:'Rodecaster',icon:'🎛️',category:'audio',desc:'Mixer audio principale',connections:[{to:'microfoni',type:'XLR',label:'4× Microfoni Shure'},{to:'cuffie',type:'AUX',label:'4× Cuffie + prolunghe'},{to:'macbook',type:'USB-C',label:'Audio al computer'},{to:'atem',type:'RCA',label:"Mix audio all'ATEM"},{to:'power',type:'POWER',label:'Alimentazione'}]},
+    macbook:{id:'macbook',name:'MacBook Pro 2020',shortName:'MacBook',icon:'💻',category:'computer',desc:'Computer principale per editing',connections:[{to:'rodecaster',type:'USB-C',label:'Audio input'},{to:'monitor2',type:'HDMI',label:'Display esterno'},{to:'harddisk',type:'USB-C',label:'Storage esterno'},{to:'power',type:'POWER',label:'Alimentazione'}]},
+    sony:{id:'sony',name:'Sony A7 IV',shortName:'Sony A7 IV',icon:'📷',category:'video',desc:'Camera principale',connections:[{to:'atem',type:'HDMI',label:"Feed video all'ATEM"},{to:'power',type:'POWER',label:'Alimentazione continua'},{to:'sd1',type:'SD',label:'Scheda SD backup'}]},
+    panasonic:{id:'panasonic',name:'Panasonic S5',shortName:'Panasonic S5',icon:'🎥',category:'video',desc:'Camera secondaria',connections:[{to:'atem',type:'HDMI',label:"Feed video all'ATEM"},{to:'power',type:'POWER',label:'Alimentazione continua'},{to:'sd2',type:'SD',label:'Scheda SD backup'}]},
+    microfoni:{id:'microfoni',name:'Microfoni Shure ×4',shortName:'Microfoni',icon:'🎙️',category:'audio',desc:'4 microfoni professionali',connections:[{to:'rodecaster',type:'XLR',label:'Ingresso XLR Rodecaster'}]},
+    cuffie:{id:'cuffie',name:'Cuffie ×4',shortName:'Cuffie',icon:'🎧',category:'audio',desc:'4 cuffie per monitoraggio',connections:[{to:'rodecaster',type:'AUX',label:'Monitor audio Rodecaster'}]},
+    monitor1:{id:'monitor1',name:'Monitor Regia',shortName:'Monitor A',icon:'🖥️',category:'video',desc:'Preview ATEM per regia',connections:[{to:'atem',type:'HDMI',label:"Preview dall'ATEM"}]},
+    monitor2:{id:'monitor2',name:'Monitor MacBook',shortName:'Monitor B',icon:'🖥️',category:'computer',desc:'Display esterno MacBook',connections:[{to:'macbook',type:'HDMI',label:'Display dal MacBook'}]},
+    harddisk:{id:'harddisk',name:'Samsung T7 Shield',shortName:'Hard Disk',icon:'💾',category:'computer',desc:'Storage esterno principale',connections:[{to:'atem',type:'USB-C',label:"Registrazione dall'ATEM"},{to:'macbook',type:'USB-C',label:'Storage dal MacBook'}]},
+    ipad:{id:'ipad',name:'iPad',shortName:'iPad',icon:'📱',category:'computer',desc:'Schema set e Procreate',connections:[{to:'tablet',type:'SYNC',label:'Sincronizzazione testi'},{to:'power',type:'POWER',label:'Alimentazione'}]},
+    tablet:{id:'tablet',name:'Tablet Teleprompter',shortName:'Teleprompter',icon:'📋',category:'computer',desc:'Gestione testo teleprompter',connections:[{to:'ipad',type:'SYNC',label:'Sync testi da iPad'},{to:'power',type:'POWER',label:'Alimentazione'}]},
+    sd1:{id:'sd1',name:'SD Card Sony',shortName:'SD Sony',icon:'🗂️',category:'computer',desc:'Backup registrazione Sony',connections:[{to:'sony',type:'SD',label:'Backup in Sony A7 IV'}]},
+    sd2:{id:'sd2',name:'SD Card Panasonic',shortName:'SD Panasonic',icon:'🗂️',category:'computer',desc:'Backup registrazione Panasonic',connections:[{to:'panasonic',type:'SD',label:'Backup in Panasonic S5'}]},
+    power:{id:'power',name:'Alimentazione / Ciabatte',shortName:'Corrente',icon:'⚡',category:'power',desc:'4 prolunghe + ciabatte',connections:[{to:'atem',type:'POWER',label:'ATEM Mini Pro ISO'},{to:'rodecaster',type:'POWER',label:'Rodecaster Pro II'},{to:'macbook',type:'POWER',label:'MacBook Pro'},{to:'sony',type:'POWER',label:'Sony A7 IV'},{to:'panasonic',type:'POWER',label:'Panasonic S5'},{to:'ipad',type:'POWER',label:'iPad'},{to:'tablet',type:'POWER',label:'Tablet Teleprompter'}]},
+    aputure85:{id:'aputure85',name:'Softbox Aputure 85cm',shortName:'Softbox Apt',icon:'💡',category:'luci',desc:'Luce principale softbox',connections:[{to:'power',type:'POWER',label:'Alimentazione'}]},
+    neewer90:{id:'neewer90',name:'Softbox Neewer 90cm',shortName:'Softbox Nwr',icon:'💡',category:'luci',desc:'Fill light softbox',connections:[{to:'power',type:'POWER',label:'Alimentazione'}]},
+    amaran25c:{id:'amaran25c',name:'Amaran 25c',shortName:'Amaran 25c',icon:'🔆',category:'luci',desc:'Luce RGB compatta',connections:[{to:'power',type:'POWER',label:'Alimentazione'}]},
+    amaran200x:{id:'amaran200x',name:'Amaran 200x',shortName:'Amaran 200x',icon:'🔆',category:'luci',desc:'Luce bi-color potente',connections:[{to:'power',type:'POWER',label:'Alimentazione'}]},
+    amaran100x:{id:'amaran100x',name:'Amaran 100x',shortName:'Amaran 100x',icon:'🔆',category:'luci',desc:'Luce bi-color media',connections:[{to:'power',type:'POWER',label:'Alimentazione'}]},
+    amaran100d:{id:'amaran100d',name:'Amaran 100d',shortName:'Amaran 100d',icon:'🔆',category:'luci',desc:'Luce daylight media',connections:[{to:'power',type:'POWER',label:'Alimentazione'}]},
+    aputuremc:{id:'aputuremc',name:'Aputure MC ×2',shortName:'Aputure MC',icon:'🔦',category:'luci',desc:'Luci RGB tascabili ×2',connections:[{to:'power',type:'POWER',label:'Ricarica USB'}]},
+    amaran25cq:{id:'amaran25cq',name:'Amaran 25 Cq',shortName:'Amaran 25Cq',icon:'🔆',category:'luci',desc:'Luce RGB quadra',connections:[{to:'power',type:'POWER',label:'Alimentazione'}]},
+  },
+  checklist: [
+    {id:'cl0',cat:'🔌 Cavi e Alimentazione',items:['3–4 cavi HDMI','3–4 cavi USB-C','4 cavi XLR','4 cavi AUX + prolunghe','2 adattatori HDMI','4 prolunghe elettriche','4 adattatori spina','2–3 ciabatte elettriche']},
+    {id:'cl1',cat:'🎛️ Audio',items:['4 microfoni Shure','4 cuffie','Rodecaster Pro II']},
+    {id:'cl2',cat:'🎬 Video e Switching',items:['ATEM Mini Pro ISO','2–3 monitor','1 scheda acquisizione HDMI']},
+    {id:'cl3',cat:'💻 Computer e Storage',items:['MacBook Pro 2020','Hard Disk Samsung T7 Shield','1–2 schede SD (backup)','iPad (schema set)','Tablet (teleprompter)']},
+    {id:'cl4',cat:'📷 Camere',items:['Sony A7 IV','Panasonic S5','Teleprompter SmallRig']},
+    {id:'cl5',cat:'💡 Illuminazione',items:['Softbox Aputure 85cm','Softbox Neewer 90cm','Amaran 25c','Amaran 200x','Amaran 100x','Amaran 100d','2× Aputure MC','Amaran 25 Cq']},
+    {id:'cl6',cat:'🔩 Supporti e Accessori',items:['2 C-Stand','2–3 light stand','2–3 treppiedi','2 magic arm','Piastre SmallRig']},
+  ],
+  macro: [
+    {id:'m0',icon:'☑', label:'Verifica Checklist',      sub:'Almeno 1 giorno prima'},
+    {id:'m1',icon:'🔋',label:'Caricamento Dispositivi',  sub:'In ordine consigliato'},
+    {id:'m2',icon:'📐',label:'Schema del Set',           sub:'Procreate su iPad'},
+    {id:'m3',icon:'🏗️',label:'Montaggio Set',            sub:'Segui schema'},
+    {id:'m4',icon:'🔌',label:'Collegamento Dispositivi', sub:'Audio, Video, Computer'},
+    {id:'m5',icon:'🔊',label:'Prove Generali',           sub:'Audio, video, luci, backup'},
+    {id:'m6',icon:'💾',label:'Controllo Backup',         sub:'HDD, SD Rodecaster, SD camere'},
+    {id:'m7',icon:'🧹',label:'Riordino del Set',         sub:'Cavi, arredi, pulizia scena'},
+    {id:'m8',icon:'🔴',label:'Spegnimento e Smontaggio', sub:'In ordine consigliato'},
+  ],
+  micro: [
+    {id:'mi0',type:'bullets',content:['Spuntare la checklist almeno <strong>1 giorno prima</strong> della registrazione.','In caso di assenza, <strong>segnalare subito</strong> per sostituzione o ricarica.']},
+    {id:'mi1',type:'steps',content:['Aputure MC','Tablet (teleprompter)','Amaran 25c','iPad','MacBook Pro','Batterie videocamere','Cuffie Bose']},
+    {id:'mi2',type:'bullets',content:['Usare <strong>Procreate su iPad</strong> per disegnare lo schema.','Indicare posizione di luci, camere, microfoni, monitor.','Salvare file con <strong>data + scopo</strong> (es. "2025-04-03 – Intervista CEO").']},
+    {id:'mi3',type:'steps',content:['C-Stand (luci principali)','Light stand (softbox, fill light)','Treppiedi (videocamere)','Magic arm (monitor o teleprompter)','Aputure MC (luci ambiente/effetti)','Amaran 25c, 200x, 100x, 100d','Posizionamento teleprompter','Arredi di scena (sedie, sfondo, tavolo…)']},
+    {id:'mi4',type:'connections',content:[
+      {device:'🎛️ Rodecaster Pro II',items:[{label:'Microfoni (XLR)',badge:'XLR'},{label:'Cuffie (AUX + prolunghe)',badge:'AUX'},{label:'Computer (USB-C)',badge:'USBC'},{label:'ATEM (RCA → mini jack)',badge:'RCA'},{label:'Corrente',badge:'POWER'}]},
+      {device:'🎬 ATEM Mini Pro ISO',items:[{label:'Camere (HDMI)',badge:'HDMI'},{label:'Monitor (HDMI)',badge:'HDMI'},{label:'Hard disk (USB-C)',badge:'USBC'},{label:'Corrente',badge:'POWER'}]},
+      {device:'💻 MacBook Pro',items:[{label:'Alimentazione',badge:'POWER'},{label:'Monitor esterno',badge:'HDMI'},{label:'Hard disk esterno',badge:'USBC'}]},
+    ]},
+    {id:'mi5',type:'checks',content:['Livelli audio su Rodecaster','Segnale video ATEM e monitor','Funzionamento videocamere','Luminosità e temperatura colore luci','Teleprompter attivo','Backup disponibili (SD, HDD, Mac)']},
+    {id:'mi6',type:'bullets',content:['Hard disk esterno Samsung T7','SD nel Rodecaster Pro II','SD nelle videocamere (Sony + Panasonic)']},
+    {id:'mi7',type:'bullets',content:['Eliminare cavi visibili in camera','Sistemare arredi di scena','Pulire la scena']},
+    {id:'mi8',type:'steps',content:['Spegnere luci','Spegnere videocamere','Spegnere Rodecaster','Spegnere MacBook e ATEM','Disconnettere e smontare progressivamente','Riavvolgere e riporre i cavi','Staccare tutte le spine dalle ciabatte','Spegnere singoli dispositivi','Staccare prese dalle ciabatte','Riportare condizionatore in deumidificatore']},
+  ],
+};
+
+const TYPE_COLORS = {HDMI:'#4a90e2',XLR:'#e2904a','USB-C':'#4ae27a',AUX:'#9b4ae2',POWER:'#e24a4a',RCA:'#e2d44a',SD:'#4ae2d4',SYNC:'#aaa',DMX:'#ffb400'};
+const CONN_TYPES  = ['HDMI','XLR','USB-C','AUX','POWER','RCA','SD','SYNC','DMX'];
+const CATEGORIES  = [{key:'video',label:'🎬 Video e Switching'},{key:'audio',label:'🎙️ Audio'},{key:'computer',label:'💻 Computer e Storage'},{key:'luci',label:'💡 Illuminazione'},{key:'power',label:'⚡ Alimentazione'}];
+
+// ═══════════════ STATE ═══════════════
+let DEVICES,CHECKLIST,MACRO,MICRO,checkState={},editMode=false,selDevice=null;
+
+function load() {
+  try {
+    DEVICES   = JSON.parse(localStorage.getItem('sopD'))   || clone(DD.devices);
+    CHECKLIST = JSON.parse(localStorage.getItem('sopCL'))  || clone(DD.checklist);
+    MACRO     = JSON.parse(localStorage.getItem('sopMA'))  || clone(DD.macro);
+    MICRO     = JSON.parse(localStorage.getItem('sopMI'))  || clone(DD.micro);
+    checkState= JSON.parse(localStorage.getItem('sopCS'))  || {};
+  } catch(e){
+    DEVICES=clone(DD.devices);CHECKLIST=clone(DD.checklist);MACRO=clone(DD.macro);MICRO=clone(DD.micro);checkState={};
+  }
+}
+function save() {
+  try{localStorage.setItem('sopD',JSON.stringify(DEVICES));localStorage.setItem('sopCL',JSON.stringify(CHECKLIST));localStorage.setItem('sopMA',JSON.stringify(MACRO));localStorage.setItem('sopMI',JSON.stringify(MICRO));localStorage.setItem('sopCS',JSON.stringify(checkState));}catch(e){}
+}
+function clone(o){return JSON.parse(JSON.stringify(o));}
+function vib(ms){try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}}
+
+// ═══════════════ NAV ═══════════════
+function showSection(id,label){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('btn-'+id).classList.add('active');
+  document.getElementById('sectionLabel').textContent=label||id;
+}
+function toggleEditMode(){
+  editMode=!editMode;
+  const btn=document.getElementById('editModeBtn');
+  btn.textContent=editMode?'✅ Fine':'✏️ Modifica';
+  btn.classList.toggle('active',editMode);
+  document.body.classList.toggle('edit-mode',editMode);
+  renderDeviceList();renderChecklist();renderProcedure();
+}
+
+// ═══════════════ DIAGRAM ═══════════════
+function renderDiagram(id){
+  selDevice=id;
+  const dev=DEVICES[id];
+  const wrap=document.getElementById('diagramWrap');
+  const empty=document.getElementById('diagEmpty');
+  const svg=document.getElementById('diagramSvg');
+  if(!dev){empty.style.display='block';svg.style.display='none';return;}
+  empty.style.display='none';svg.style.display='block';
+  const W=wrap.offsetWidth||320;
+  const H=Math.min(Math.max(W*0.65,200),280);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('height',H);
+  svg.innerHTML='';
+  const conns=dev.connections,n=conns.length,cx=W/2,cy=H/2,R=Math.min(W,H)*0.33;
+  // lines
+  conns.forEach((c,i)=>{
+    const a=(2*Math.PI*i/n)-Math.PI/2,px=cx+R*Math.cos(a),py=cy+R*Math.sin(a);
+    const col=TYPE_COLORS[c.type]||'#666';
+    const dx=px-cx,dy=py-cy,dist=Math.sqrt(dx*dx+dy*dy),cp=dist*0.28;
+    const px2=-dy/dist,py2=dx/dist;
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',`M ${cx} ${cy} C ${cx+dx*.4+px2*cp} ${cy+dy*.4+py2*cp}, ${cx+dx*.6+px2*cp} ${cy+dy*.6+py2*cp}, ${px} ${py}`);
+    path.setAttribute('stroke',col);path.setAttribute('stroke-width','1.6');
+    path.setAttribute('fill','none');path.setAttribute('opacity','0.5');
+    if(c.type==='POWER')path.setAttribute('stroke-dasharray','5,3');
+    svg.appendChild(path);
+    // badge
+    const mx=(cx+px)/2,my=(cy+py)/2;
+    const fo=document.createElementNS('http://www.w3.org/2000/svg','foreignObject');
+    fo.setAttribute('x',mx-26);fo.setAttribute('y',my-8);fo.setAttribute('width','52');fo.setAttribute('height','16');
+    fo.innerHTML=`<div xmlns="http://www.w3.org/1999/xhtml" style="text-align:center;font-size:7.5px;font-weight:700;background:rgba(8,8,8,.88);color:${col};padding:1px 5px;border-radius:100px;border:1px solid ${col}28;white-space:nowrap;font-family:-apple-system,sans-serif">${c.type==='USB-C'?'USB‑C':c.type}</div>`;
+    svg.appendChild(fo);
+  });
+  // center node
+  svgNode(svg,cx,cy,dev.icon,dev.shortName,true);
+  // peripheral
+  conns.forEach((c,i)=>{
+    const a=(2*Math.PI*i/n)-Math.PI/2,px=cx+R*Math.cos(a),py=cy+R*Math.sin(a);
+    const t=DEVICES[c.to];
+    const fo=document.createElementNS('http://www.w3.org/2000/svg','foreignObject');
+    const nw=68,nh=48;fo.setAttribute('x',px-nw/2);fo.setAttribute('y',py-nh/2);
+    fo.setAttribute('width',nw);fo.setAttribute('height',nh);fo.style.cursor='pointer';
+    fo.innerHTML=`<div xmlns="http://www.w3.org/1999/xhtml" onclick="selectDevice('${c.to}')" style="background:#1c1c1c;border:1px solid #2e2e2e;border-radius:10px;padding:5px 3px;text-align:center;width:${nw}px;box-sizing:border-box;cursor:pointer">
+      <div style="font-size:15px;line-height:1">${t?t.icon:'❓'}</div>
+      <div style="font-size:8px;font-weight:700;color:#e8e8e8;margin-top:2px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t?t.shortName:c.to}</div>
+    </div>`;
+    svg.appendChild(fo);
+  });
+}
+function svgNode(svg,x,y,icon,name,center){
+  const w=center?84:68,h=center?56:48;
+  const fo=document.createElementNS('http://www.w3.org/2000/svg','foreignObject');
+  fo.setAttribute('x',x-w/2);fo.setAttribute('y',y-h/2);fo.setAttribute('width',w);fo.setAttribute('height',h);
+  fo.innerHTML=`<div xmlns="http://www.w3.org/1999/xhtml" style="background:${center?'#282828':'#1c1c1c'};border:${center?'1.5px solid rgba(255,255,255,.6)':'1px solid #2e2e2e'};border-radius:${center?'13px':'10px'};padding:${center?'7px 5px':'5px 3px'};text-align:center;width:${w}px;box-sizing:border-box;${center?'box-shadow:0 0 0 3px rgba(255,255,255,.07)':''}">
+    <div style="font-size:${center?'19px':'15px'};line-height:1">${icon}</div>
+    <div style="font-size:${center?'9px':'8px'};font-weight:700;color:#f0f0f0;margin-top:2px;line-height:1.2">${name}</div>
+  </div>`;
+  svg.appendChild(fo);
+}
+function selectDevice(id){
+  document.querySelectorAll('.device-item').forEach(el=>el.classList.remove('selected'));
+  const el=document.getElementById('ditem-'+id);
+  if(el){el.classList.add('selected');el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+  renderDiagram(id);
+  document.getElementById('schemaSubtitle').textContent=DEVICES[id]?DEVICES[id].name:'';
+}
+
+// ═══════════════ DEVICE LIST ═══════════════
+function renderDeviceList(){
+  const list=document.getElementById('deviceList');
+  list.innerHTML=CATEGORIES.map(cat=>{
+    const devs=Object.values(DEVICES).filter(d=>d.category===cat.key);
+    if(!devs.length)return'';
+    return`<div class="cat-label">${cat.label}</div>${devs.map(d=>`
+      <div class="device-item cat-${d.category}" id="ditem-${d.id}">
+        <div class="d-icon" onclick="${editMode?`openEditDevice('${d.id}')`:`selectDevice('${d.id}')`}">${d.icon}</div>
+        <div class="d-info" onclick="${editMode?`openEditDevice('${d.id}')`:`selectDevice('${d.id}')`}">
+          <div class="d-name">${d.name}</div>
+          <div class="d-cat">${d.connections.length} collegament${d.connections.length!==1?'i':'o'}</div>
+        </div>
+        <span class="d-chevron" onclick="openDeviceSheet('${d.id}')">›</span>
+        <span class="d-del" onclick="deleteDevice('${d.id}')">🗑</span>
+      </div>`).join('')}`;
+  }).join('');
+}
+
+// ═══════════════ DEVICE SHEET ═══════════════
+function openDeviceSheet(id){
+  if(editMode){openEditDevice(id);return;}
+  const d=DEVICES[id];if(!d)return;vib(5);
+  document.getElementById('sheetHeader').innerHTML=`
+    <div class="sheet-icon">${d.icon}</div>
+    <div style="flex:1"><div class="sheet-title">${d.name}</div><div class="sheet-desc">${d.desc}</div></div>
+    <span class="sheet-close" onclick="closeSheet()">✕</span>`;
+  let html=`<div class="conn-section-label">${d.connections.length} collegament${d.connections.length!==1?'i':'o'}</div>`;
+  d.connections.forEach(c=>{
+    const t=DEVICES[c.to];const bt='badge-'+c.type.replace(/[^A-Za-z]/g,'');
+    html+=`<div class="conn-row" onclick="openDeviceSheet('${c.to}')">
+      <div class="conn-row-icon">${t?t.icon:'❓'}</div>
+      <div class="conn-row-info"><div class="conn-row-name">${t?t.name:c.to}</div><div class="conn-row-label">${c.label}</div></div>
+      <span class="${bt} conn-badge">${c.type==='USB-C'?'USB‑C':c.type}</span>
+      <span class="conn-row-chev">›</span></div>`;
+  });
+  document.getElementById('sheetBody').innerHTML=html;
+  showSheet();
+}
+function showSheet(){
+  document.getElementById('sheetOverlay').classList.add('visible');
+  setTimeout(()=>document.getElementById('sheet').classList.add('visible'),10);
+}
+function closeSheet(){
+  document.getElementById('sheet').classList.remove('visible');
+  document.getElementById('sheetOverlay').classList.remove('visible');
+}
+// swipe to close
+let sy=0;const sh=document.getElementById('sheet');
+sh.addEventListener('touchstart',e=>{sy=e.touches[0].clientY;},{passive:true});
+sh.addEventListener('touchmove',e=>{const dy=e.touches[0].clientY-sy;if(dy>0)sh.style.transform=`translateY(${dy}px)`;},{passive:true});
+sh.addEventListener('touchend',e=>{const dy=e.changedTouches[0].clientY-sy;sh.style.transform='';if(dy>80)closeSheet();},{passive:true});
+
+// ═══════════════ CHECKLIST ═══════════════
+function renderChecklist(){
+  document.getElementById('checklistWrap').innerHTML=CHECKLIST.map((cat,ci)=>{
+    const total=cat.items.length,done=cat.items.filter((_,ii)=>checkState[`${cat.id}-${ii}`]).length,pct=total?Math.round(done/total*100):0;
+    return`<div class="cl-card" id="clc-${ci}">
+      <div class="cl-card-head">
+        <div class="cl-card-icon" onclick="toggleCard(${ci})">${cat.cat.split(' ')[0]}</div>
+        <div class="cl-card-head-info" onclick="toggleCard(${ci})">
+          <div class="cl-card-title">${cat.cat.slice(cat.cat.indexOf(' ')+1)}</div>
+          <div class="cl-card-count">${done}/${total} · ${pct}%</div>
+        </div>
+        <span class="cl-cat-del" onclick="deleteCat(${ci})">🗑</span>
+        <span class="cl-chevron" onclick="toggleCard(${ci})">›</span>
+      </div>
+      <div class="cl-items-wrap">
+        ${cat.items.map((item,ii)=>{const k=`${cat.id}-${ii}`,done2=!!checkState[k];return`
+          <div class="cl-item${done2?' done':''}">
+            <div class="cb${done2?' done':''}" onclick="toggleCheck('${cat.id}',${ii})">${done2?'✓':''}</div>
+            <div class="cl-text" onclick="toggleCheck('${cat.id}',${ii})">${item}</div>
+            <span class="cl-item-del" onclick="delItem(${ci},${ii})">🗑</span>
+          </div>`}).join('')}
+        <div class="cl-add-item" onclick="openAddItem(${ci})">＋ Aggiungi voce</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleCard(ci){document.getElementById('clc-'+ci).classList.toggle('collapsed');}
+function toggleCheck(catId,ii){vib(3);const k=`${catId}-${ii}`;checkState[k]=!checkState[k];save();renderChecklist();}
+function resetChecklist(){if(!confirm('Resettare tutta la checklist?'))return;checkState={};save();renderChecklist();}
+function deleteCat(ci){if(!confirm(`Eliminare "${CHECKLIST[ci].cat}"?`))return;CHECKLIST.splice(ci,1);save();renderChecklist();}
+function delItem(ci,ii){if(!confirm('Eliminare questa voce?'))return;CHECKLIST[ci].items.splice(ii,1);save();renderChecklist();}
+
+// ═══════════════ PROCEDURE ═══════════════
+function renderProcedure(){
+  document.getElementById('procedureWrap').innerHTML=MACRO.map((m,i)=>`
+    <div class="macro-step">
+      <div class="step-num">${i+1}</div>
+      <div class="step-info" onclick="openMicroSheet(${i})">
+        <div class="step-label">${m.icon} ${m.label}</div>
+        <div class="step-sub">${m.sub}</div>
+      </div>
+      <span class="step-chevron" onclick="openMicroSheet(${i})">›</span>
+      <span class="step-del" onclick="deleteStep(${i})">🗑</span>
+    </div>`).join('');
+}
+function openMicroSheet(index){
+  vib(5);const m=MICRO[index],mac=MACRO[index];
+  document.getElementById('sheetHeader').innerHTML=`
+    <div class="sheet-icon" style="font-size:22px">${mac.icon}</div>
+    <div style="flex:1"><div class="sheet-title">${mac.label}</div><div class="sheet-desc">Step ${index+1}/${MACRO.length} · ${mac.sub}</div></div>
+    <span class="sheet-close" onclick="closeSheet()">✕</span>`;
+  let html='';
+  if(m.type==='steps'){html=m.content.map((s,i)=>`<div class="micro-step"><div class="micro-step-num">${i+1}</div><div class="micro-step-text">${s}</div></div>`).join('');}
+  else if(m.type==='bullets'||m.type==='checks'){html=m.content.map(s=>`<div class="micro-bullet"><div class="micro-bullet-text">${s}</div></div>`).join('');}
+  else if(m.type==='connections'){html=m.content.map(b=>`<div class="connection-block"><div class="connection-block-title">${b.device}</div>${b.items.map(it=>`<div class="connection-block-item"><span class="arrow">→</span><span class="conn-badge badge-${it.badge}">${it.badge==='USBC'?'USB‑C':it.badge}</span><span>${it.label}</span></div>`).join('')}</div>`).join('');}
+  html+=`<div class="micro-nav">${index>0?`<button onclick="openMicroSheet(${index-1})">← Precedente</button>`:''} ${index<MACRO.length-1?`<button onclick="openMicroSheet(${index+1})">Successivo →</button>`:''}</div>`;
+  if(editMode)html+=`<button class="btn btn-danger" style="width:100%;margin-top:10px;padding:11px;border-radius:11px" onclick="closeSheet();openEditStep(${index})">✏️ Modifica</button>`;
+  document.getElementById('sheetBody').innerHTML=html;
+  showSheet();
+}
+function deleteStep(i){if(!confirm(`Eliminare "${MACRO[i]?.label}"?`))return;MACRO.splice(i,1);MICRO.splice(i,1);save();renderProcedure();}
+
+// ═══════════════ MODAL ═══════════════
+function openModal(title,body,footer){
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalBody').innerHTML=body;
+  document.getElementById('modalFooter').innerHTML=footer;
+  document.getElementById('modalOverlay').classList.add('visible');
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('visible');}
+
+// ═══════════════ ADD/EDIT DEVICE ═══════════════
+function openAddDevice(){_devForm(null);}
+function openEditDevice(id){_devForm(id);}
+function _devForm(id){
+  const d=id?DEVICES[id]:null;
+  const catOpts=CATEGORIES.map(c=>`<option value="${c.key}"${d&&d.category===c.key?' selected':''}>${c.label}</option>`).join('');
+  const typeOpts=CONN_TYPES.map(t=>`<option value="${t}">${t}</option>`).join('');
+  const devOpts=Object.values(DEVICES).filter(x=>!id||x.id!==id).map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+  const existConns=d?d.connections.map((c,i)=>{const tname=DEVICES[c.to]?DEVICES[c.to].name:c.to;return`<div class="conn-list-item" data-type="${c.type}" data-to="${c.to}" data-label="${c.label}"><span class="conn-list-text">${c.type} → ${tname}: ${c.label}</span><span class="conn-list-del" onclick="this.parentElement.remove()">🗑</span></div>`}).join(''):'';
+  openModal(id?'Modifica dispositivo':'Nuovo dispositivo',`
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 70px"><label class="form-label">Icona</label><input class="form-input" id="fi-icon" value="${d?d.icon:'📦'}" maxlength="4" style="text-align:center;font-size:20px"></div>
+      <div class="form-group" style="flex:1"><label class="form-label">Nome completo</label><input class="form-input" id="fi-name" value="${d?d.name:''}" placeholder="Es: Sony A7 IV"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Nome breve</label><input class="form-input" id="fi-short" value="${d?d.shortName:''}" placeholder="Es: Sony"></div>
+      <div class="form-group"><label class="form-label">Categoria</label><select class="form-select" id="fi-cat">${catOpts}</select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Descrizione</label><input class="form-input" id="fi-desc" value="${d?d.desc:''}" placeholder="Es: Camera principale"></div>
+    <div class="form-group">
+      <label class="form-label">Connessioni</label>
+      <div id="connList">${existConns}</div>
+      <div class="conn-add-row" style="margin-top:7px">
+        <select class="form-select" id="fi-ctype">${typeOpts}</select>
+        <select class="form-select" id="fi-cto">${devOpts}</select>
+      </div>
+      <div class="conn-add-row2" style="margin-top:6px">
+        <input class="form-input" id="fi-clabel" placeholder="Etichetta (es: Camera A input)">
+        <button class="btn btn-secondary" style="flex:0 0 44px;padding:0" onclick="addConnRow()">＋</button>
+      </div>
+    </div>`,
+    `${id?`<button class="btn btn-danger" onclick="deleteDevice('${id}');closeModal()">Elimina</button>`:''}
+     <button class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+     <button class="btn btn-primary" onclick="saveDevice('${id||''}')">Salva</button>`);
+}
+function addConnRow(){
+  const type=document.getElementById('fi-ctype').value,toId=document.getElementById('fi-cto').value,label=document.getElementById('fi-clabel').value.trim();
+  if(!toId||!label){alert('Seleziona dispositivo e scrivi etichetta');return;}
+  const tname=DEVICES[toId]?DEVICES[toId].name:toId;
+  const row=document.createElement('div');row.className='conn-list-item';
+  row.dataset.type=type;row.dataset.to=toId;row.dataset.label=label;
+  row.innerHTML=`<span class="conn-list-text">${type} → ${tname}: ${label}</span><span class="conn-list-del" onclick="this.parentElement.remove()">🗑</span>`;
+  document.getElementById('connList').appendChild(row);
+  document.getElementById('fi-clabel').value='';
+}
+function saveDevice(eid){
+  const icon=document.getElementById('fi-icon').value.trim()||'📦';
+  const name=document.getElementById('fi-name').value.trim();
+  const short=document.getElementById('fi-short').value.trim();
+  const cat=document.getElementById('fi-cat').value;
+  const desc=document.getElementById('fi-desc').value.trim();
+  if(!name){alert('Inserisci un nome');return;}
+  const rows=document.getElementById('connList').querySelectorAll('.conn-list-item');
+  const connections=[];
+  rows.forEach(el=>{if(el.dataset.to&&el.dataset.label)connections.push({to:el.dataset.to,type:el.dataset.type,label:el.dataset.label});});
+  const id=eid||name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,16)+Date.now().toString().slice(-4);
+  DEVICES[id]={id,name,shortName:short||name,icon,category:cat,desc,connections};
+  save();closeModal();renderDeviceList();if(selDevice)renderDiagram(selDevice);
+}
+function deleteDevice(id){
+  if(!confirm(`Eliminare ${DEVICES[id]?.name}?`))return;
+  delete DEVICES[id];
+  if(selDevice===id){selDevice=null;document.getElementById('diagramSvg').style.display='none';document.getElementById('diagEmpty').style.display='block';}
+  save();closeSheet();renderDeviceList();
+}
+
+// ═══════════════ CHECKLIST CRUD ═══════════════
+function openAddCategory(){
+  openModal('Nuova categoria',`<div class="form-group"><label class="form-label">Emoji + Nome (es: 📦 Accessori)</label><input class="form-input" id="ci-cat" placeholder="📦 Nuova categoria"></div>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">Annulla</button><button class="btn btn-primary" onclick="saveCategory()">Aggiungi</button>`);
+}
+function saveCategory(){const v=document.getElementById('ci-cat').value.trim();if(!v)return;CHECKLIST.push({id:'cl'+Date.now(),cat:v,items:[]});save();closeModal();renderChecklist();}
+function openAddItem(ci){
+  openModal('Aggiungi voce',`<div class="form-group"><label class="form-label">Voce</label><input class="form-input" id="ni-val" placeholder="Es: Cavo HDMI extra"></div>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">Annulla</button><button class="btn btn-primary" onclick="saveItem(${ci})">Aggiungi</button>`);
+}
+function saveItem(ci){const v=document.getElementById('ni-val').value.trim();if(!v)return;CHECKLIST[ci].items.push(v);save();closeModal();renderChecklist();}
+
+// ═══════════════ PROCEDURE CRUD ═══════════════
+function openAddStep(){_stepForm(null);}
+function openEditStep(i){_stepForm(i);}
+function _stepForm(index){
+  const m=index!==null?MACRO[index]:null,mi=index!==null?MICRO[index]:null;
+  const typeOpts=['steps','bullets','checks'].map(t=>`<option value="${t}"${mi&&mi.type===t?' selected':''}>${t==='steps'?'Passi numerati':t==='bullets'?'Punti elenco':'Check'}</option>`).join('');
+  const existing=mi&&mi.type!=='connections'?mi.content.join('\n'):'';
+  openModal(index!==null?'Modifica procedura':'Nuova procedura',`
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 65px"><label class="form-label">Emoji</label><input class="form-input" id="si-icon" value="${m?m.icon:'📋'}" maxlength="4" style="text-align:center;font-size:18px"></div>
+      <div class="form-group" style="flex:1"><label class="form-label">Titolo</label><input class="form-input" id="si-label" value="${m?m.label:''}" placeholder="Es: Verifica Checklist"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Sottotitolo</label><input class="form-input" id="si-sub" value="${m?m.sub:''}" placeholder="Es: Almeno 1 giorno prima"></div>
+    <div class="form-group"><label class="form-label">Tipo contenuto</label><select class="form-select" id="si-type">${typeOpts}</select></div>
+    <div class="form-group"><label class="form-label">Contenuto (una riga = un punto)</label><textarea class="form-textarea" id="si-content" rows="7">${existing}</textarea></div>`,
+    `${index!==null?`<button class="btn btn-danger" onclick="deleteStep(${index});closeModal()">Elimina</button>`:''}
+     <button class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+     <button class="btn btn-primary" onclick="saveStep(${index!==null?index:'null'})">Salva</button>`);
+}
+function saveStep(index){
+  const icon=document.getElementById('si-icon').value.trim()||'📋';
+  const label=document.getElementById('si-label').value.trim();
+  const sub=document.getElementById('si-sub').value.trim();
+  const type=document.getElementById('si-type').value;
+  const content=document.getElementById('si-content').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!label){alert('Inserisci un titolo');return;}
+  const me={id:index!==null?MACRO[index].id:'m'+Date.now(),icon,label,sub};
+  const mie={id:index!==null?MICRO[index].id:'mi'+Date.now(),type,content};
+  if(index!==null){MACRO[index]=me;MICRO[index]=mie;}else{MACRO.push(me);MICRO.push(mie);}
+  save();closeModal();renderProcedure();
+}
+
+// ═══════════════ INSTALL BANNER ═══════════════
+function checkInstallBanner(){
+  const standalone=window.navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;
+  if(!standalone&&!localStorage.getItem('installDismissed'))setTimeout(()=>document.getElementById('installBanner').classList.add('show'),2000);
+}
+function dismissBanner(){document.getElementById('installBanner').classList.remove('show');try{localStorage.setItem('installDismissed','1');}catch(e){}}
+
+// ═══════════════ INIT ═══════════════
+load();renderDeviceList();renderChecklist();renderProcedure();checkInstallBanner();
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
