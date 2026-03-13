@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SOP Studio">
+<meta name="theme-color" content="#080808">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>SOP Studio</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --surface3: #222222;
+    --border: #2a2a2a;
+    --border2: #333333;
+    --text: #f0f0f0;
+    --text-muted: #888;
+    --text-subtle: #444;
+    --accent: #ffffff;
+    --accent-dim: rgba(255,255,255,0.08);
+    --hdmi: #4a90e2;
+    --xlr: #e2904a;
+    --usbc: #4ae27a;
+    --aux: #9b4ae2;
+    --power: #e24a4a;
+    --rca: #e2d44a;
+    --sd: #4ae2d4;
+    /* iOS safe areas */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    /* Prevent text size adjustment on orientation change */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ─── TOP STATUS BAR SPACER ─── */
+  .status-bar-spacer {
+    height: var(--safe-top);
+    background: rgba(8,8,8,0.95);
+    flex-shrink: 0;
+  }
+
+  /* ─── HEADER ─── */
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 52px;
+    background: rgba(8,8,8,0.95);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .logo {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    color: var(--accent);
+  }
+  .logo span { color: var(--text-subtle); font-weight: 400; }
+
+  .header-badge {
+    font-size: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text-muted);
+    padding: 3px 9px;
+    border-radius: 100px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  /* ─── CONTENT AREA ─── */
+  .content-area {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ─── SECTIONS ─── */
+  .section {
+    display: none;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 16px 16px 8px;
+  }
+  .section.active { display: block; animation: fadeIn 0.2s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── BOTTOM NAV ─── */
+  .bottom-nav {
+    display: flex;
+    background: rgba(14,14,14,0.97);
+    border-top: 1px solid var(--border);
+    padding-bottom: var(--safe-bottom);
+    flex-shrink: 0;
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+  }
+
+  .nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px 10px;
+    gap: 4px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--text-subtle);
+    transition: color 0.15s;
+    min-height: 58px;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .nav-btn.active { color: var(--accent); }
+  .nav-btn:active { opacity: 0.6; }
+
+  .nav-icon { font-size: 22px; line-height: 1; }
+  .nav-label { font-size: 10px; font-weight: 600; letter-spacing: -0.1px; }
+
+  /* ─── SECTION HEADER ─── */
+  .section-header { margin-bottom: 16px; }
+  .section-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    margin-bottom: 3px;
+  }
+  .section-subtitle { font-size: 12px; color: var(--text-muted); }
+
+  /* ─── SCHEMA / CONNECTIONS ─── */
+  /* Device List (replaces sidebar for mobile) */
+  .device-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .cat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-subtle);
+    margin: 14px 0 6px 4px;
+    font-weight: 700;
+  }
+  .cat-label:first-child { margin-top: 0; }
+
+  .device-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border: 1px solid transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .device-item:active { opacity: 0.7; }
+  .device-item.active { background: var(--surface2); border-color: rgba(255,255,255,0.2); }
+  .device-item:not(.active):active { background: var(--surface2); }
+
+  .d-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .cat-video .d-icon { background: rgba(74,144,226,0.12); }
+  .cat-audio .d-icon { background: rgba(226,144,74,0.12); }
+  .cat-computer .d-icon { background: rgba(74,226,122,0.12); }
+  .cat-power .d-icon { background: rgba(226,74,74,0.12); }
+
+  .d-info { min-width: 0; flex: 1; }
+  .d-name { font-size: 14px; font-weight: 600; }
+  .d-cat { font-size: 11px; color: var(--text-subtle); margin-top: 1px; }
+  .d-chevron { color: var(--text-subtle); font-size: 14px; }
+
+  /* ─── DEVICE DETAIL PANEL (slide-up sheet) ─── */
+  .sheet-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 100;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .sheet-overlay.visible { display: block; animation: overlayIn 0.25s ease; }
+  @keyframes overlayIn { from { opacity:0; } to { opacity:1; } }
+
+  .sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border: 1px solid var(--border2);
+    border-bottom: none;
+    z-index: 101;
+    padding-bottom: var(--safe-bottom);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .sheet.visible { transform: translateY(0); }
+
+  .sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border2);
+    border-radius: 2px;
+    margin: 12px auto 0;
+    flex-shrink: 0;
+  }
+
+  .sheet-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sheet-device-icon {
+    width: 46px; height: 46px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    background: var(--surface2);
+    flex-shrink: 0;
+  }
+  .sheet-title { font-size: 17px; font-weight: 800; letter-spacing: -0.3px; }
+  .sheet-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .sheet-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 20px 20px;
+    flex: 1;
+  }
+
+  .conn-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-subtle);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .conn-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .conn-row:active { opacity: 0.7; }
+  .conn-row-icon { font-size: 16px; flex-shrink: 0; }
+  .conn-row-info { flex: 1; min-width: 0; }
+  .conn-row-name { font-size: 13px; font-weight: 600; }
+  .conn-row-label { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+  .conn-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 100px;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+  }
+  .badge-HDMI  { background: rgba(74,144,226,0.2);  color: #4a90e2; }
+  .badge-XLR   { background: rgba(226,144,74,0.2);  color: #e2904a; }
+  .badge-USBC  { background: rgba(74,226,122,0.2);  color: #4ae27a; }
+  .badge-AUX   { background: rgba(155,74,226,0.2);  color: #9b4ae2; }
+  .badge-POWER { background: rgba(226,74,74,0.2);   color: #e24a4a; }
+  .badge-RCA   { background: rgba(226,212,74,0.2);  color: #e2d44a; }
+  .badge-SD    { background: rgba(74,226,212,0.2);  color: #4ae2d4; }
+  .badge-SYNC  { background: rgba(200,200,200,0.15);color: #aaa; }
+
+  /* ─── CHECKLIST ─── */
+  .checklist-wrap { display: flex; flex-direction: column; gap: 12px; }
+
+  .cl-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    overflow: hidden;
+  }
+
+  .cl-card-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .cl-card-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    background: var(--surface2);
+    flex-shrink: 0;
+  }
+  .cl-card-title { font-size: 14px; font-weight: 700; flex: 1; }
+  .cl-card-count { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .cl-card-chevron { color: var(--text-subtle); font-size: 14px; transition: transform 0.2s; }
+  .cl-card.collapsed .cl-card-chevron { transform: rotate(-90deg); }
+
+  .cl-items-wrap { overflow: hidden; }
+  .cl-card.collapsed .cl-items-wrap { display: none; }
+
+  .cl-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 2px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .cl-item:last-child { border-bottom: none; }
+  .cl-item:active { opacity: 0.7; }
+
+  .cb {
+    width: 22px; height: 22px;
+    border: 2px solid var(--border2);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .cb.done { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  .cl-text { font-size: 14px; transition: all 0.2s; line-height: 1.3; }
+  .cl-item.done .cl-text { text-decoration: line-through; color: var(--text-subtle); }
+
+  .progress-bar {
+    height: 3px;
+    background: var(--surface3);
+    border-radius: 2px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.35s ease;
+  }
+
+  /* Reset checklist button */
+  .reset-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 12px;
+    margin-top: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .reset-btn:active { opacity: 0.6; }
+
+  /* ─── PROCEDURE ─── */
+  .procedure-wrap { display: flex; flex-direction: column; gap: 8px; }
+
+  .macro-step {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border: 1px solid transparent;
+    background: var(--surface);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .macro-step:active { opacity: 0.7; }
+  .macro-step.active { border-color: var(--border2); }
+
+  .step-num {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800;
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
+  .macro-step.active .step-num { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  .step-label { font-size: 14px; font-weight: 700; }
+  .step-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .step-chevron { color: var(--text-subtle); font-size: 14px; margin-left: auto; }
+
+  /* Micro panel sheet */
+  .micro-title {
+    font-size: 20px; font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+  .micro-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 100px;
+    padding: 4px 12px;
+    font-size: 11px; color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+
+  .micro-step {
+    display: flex; gap: 12px;
+    margin-bottom: 12px;
+    align-items: flex-start;
+  }
+  .micro-step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--surface3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800;
+    flex-shrink: 0; color: var(--text-muted);
+  }
+  .micro-step-text { font-size: 14px; line-height: 1.6; color: var(--text-muted); padding-top: 3px; }
+  .micro-step-text strong { color: var(--text); font-weight: 600; }
+
+  .micro-bullet { display: flex; gap: 10px; margin-bottom: 10px; }
+  .micro-bullet::before { content: '—'; color: var(--text-subtle); flex-shrink: 0; font-size: 14px; padding-top: 1px; }
+  .micro-bullet-text { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+
+  .connection-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .connection-block-title {
+    font-size: 14px; font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .connection-block-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--text-muted);
+    margin-bottom: 7px;
+  }
+  .connection-block-item:last-child { margin-bottom: 0; }
+  .arrow { color: var(--text-subtle); }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { display: none; }
+
+  /* ─── INSTALL BANNER ─── */
+  .install-banner {
+    display: none;
+    position: fixed;
+    bottom: calc(58px + var(--safe-bottom) + 12px);
+    left: 16px; right: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 14px 16px;
+    z-index: 90;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  }
+  .install-banner.show { display: flex; }
+  .install-banner-row { display: flex; align-items: center; gap: 10px; }
+  .install-banner-text { flex: 1; font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+  .install-banner-text strong { color: var(--text); }
+  .install-banner-close {
+    color: var(--text-subtle); font-size: 18px;
+    cursor: pointer; padding: 2px;
+    -webkit-user-select: none; user-select: none;
+  }
+  .install-steps {
+    font-size: 12px; color: var(--text-muted);
+    background: var(--surface3);
+    border-radius: 10px;
+    padding: 10px 12px;
+    line-height: 1.7;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- iOS Status Bar Spacer -->
+<div class="status-bar-spacer"></div>
+
+<!-- App Header -->
+<header class="app-header">
+  <div class="logo">SOP<span>studio</span></div>
+  <div class="header-badge" id="sectionLabel">Connessioni</div>
+</header>
+
+<!-- Content Area -->
+<div class="content-area">
+
+  <!-- ─── SCHEMA / CONNESSIONI ─── -->
+  <section id="schema" class="section active">
+    <div class="section-header">
+      <div class="section-title">Schema Connessioni</div>
+      <div class="section-subtitle">Tocca un dispositivo per vedere i collegamenti</div>
+    </div>
+    <div class="device-list" id="deviceList"></div>
+  </section>
+
+  <!-- ─── CHECKLIST ─── -->
+  <section id="checklist" class="section">
+    <div class="section-header">
+      <div class="section-title">Checklist</div>
+      <div class="section-subtitle">Spunta almeno 1 giorno prima della registrazione</div>
+    </div>
+    <div class="checklist-wrap" id="checklistWrap"></div>
+    <button class="reset-btn" onclick="resetChecklist()">↺ Reset checklist</button>
+    <div style="height: 16px;"></div>
+  </section>
+
+  <!-- ─── PROCEDURE ─── -->
+  <section id="procedure" class="section">
+    <div class="section-header">
+      <div class="section-title">Procedure</div>
+      <div class="section-subtitle">Tocca una procedura per i dettagli</div>
+    </div>
+    <div class="procedure-wrap" id="procedureWrap"></div>
+    <div style="height: 16px;"></div>
+  </section>
+
+</div><!-- /content-area -->
+
+<!-- Bottom Navigation -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="btn-schema" onclick="showSection('schema','⚡ Connessioni')">
+    <span class="nav-icon">🔌</span>
+    <span class="nav-label">Connessioni</span>
+  </button>
+  <button class="nav-btn" id="btn-checklist" onclick="showSection('checklist','☑ Checklist')">
+    <span class="nav-icon">☑️</span>
+    <span class="nav-label">Checklist</span>
+  </button>
+  <button class="nav-btn" id="btn-procedure" onclick="showSection('procedure','📋 Procedure')">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label">Procedure</span>
+  </button>
+</nav>
+
+<!-- Device Detail Sheet -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+<div class="sheet" id="deviceSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header" id="sheetHeader"></div>
+  <div class="sheet-body" id="sheetBody"></div>
+</div>
+
+<!-- Install Banner (shown on first visit in browser) -->
+<div class="install-banner" id="installBanner">
+  <div class="install-banner-row">
+    <span style="font-size:24px;">📲</span>
+    <div class="install-banner-text"><strong>Aggiungila alla schermata Home</strong><br>Per usarla come un'app vera</div>
+    <span class="install-banner-close" onclick="dismissBanner()">✕</span>
+  </div>
+  <div class="install-steps">
+    1. Tocca <strong>⎙ Condividi</strong> in Safari<br>
+    2. Scorri e tocca <strong>"Aggiungi a schermata Home"</strong><br>
+    3. Tocca <strong>Aggiungi</strong> → app installata! 🎉
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────
+// DATA
+// ──────────────────────────────────────────────
+const DEVICES = {
+  atem: {
+    id: 'atem', name: 'ATEM Mini Pro ISO', shortName: 'ATEM', icon: '🎬',
+    category: 'video', catLabel: 'Video e Switching',
+    desc: 'Video switcher multi-camera',
+    connections: [
+      { to: 'sony',       type: 'HDMI',  label: 'Camera A input' },
+      { to: 'panasonic',  type: 'HDMI',  label: 'Camera B input' },
+      { to: 'monitor1',   type: 'HDMI',  label: 'Preview regia' },
+      { to: 'harddisk',   type: 'USB-C', label: 'Registrazione diretta' },
+      { to: 'rodecaster', type: 'RCA',   label: 'Audio mix in' },
+      { to: 'power',      type: 'POWER', label: 'Alimentazione' },
+    ]
+  },
+  rodecaster: {
+    id: 'rodecaster', name: 'Rodecaster Pro II', shortName: 'Rodecaster', icon: '🎛️',
+    category: 'audio', catLabel: 'Audio',
+    desc: 'Mixer audio principale',
+    connections: [
+      { to: 'microfoni', type: 'XLR',   label: '4× Microfoni Shure' },
+      { to: 'cuffie',    type: 'AUX',   label: '4× Cuffie + prolunghe' },
+      { to: 'macbook',   type: 'USB-C', label: 'Audio al computer' },
+      { to: 'atem',      type: 'RCA',   label: "Mix audio all'ATEM" },
+      { to: 'power',     type: 'POWER', label: 'Alimentazione' },
+    ]
+  },
+  macbook: {
+    id: 'macbook', name: 'MacBook Pro 2020', shortName: 'MacBook', icon: '💻',
+    category: 'computer', catLabel: 'Computer e Storage',
+    desc: 'Computer principale per editing',
+    connections: [
+      { to: 'rodecaster', type: 'USB-C', label: 'Audio input' },
+      { to: 'monitor2',   type: 'HDMI',  label: 'Display esterno' },
+      { to: 'harddisk',   type: 'USB-C', label: 'Storage esterno' },
+      { to: 'power',      type: 'POWER', label: 'Alimentazione' },
+    ]
+  },
+  sony: {
+    id: 'sony', name: 'Sony A7 IV', shortName: 'Sony A7 IV', icon: '📷',
+    category: 'video', catLabel: 'Video e Switching',
+    desc: 'Camera principale',
+    connections: [
+      { to: 'atem',  type: 'HDMI',  label: "Feed video all'ATEM" },
+      { to: 'power', type: 'POWER', label: 'Alimentazione continua' },
+      { to: 'sd1',   type: 'SD',    label: 'Scheda SD backup' },
+    ]
+  },
+  panasonic: {
+    id: 'panasonic', name: 'Panasonic S5', shortName: 'Panasonic S5', icon: '🎥',
+    category: 'video', catLabel: 'Video e Switching',
+    desc: 'Camera secondaria',
+    connections: [
+      { to: 'atem',  type: 'HDMI',  label: "Feed video all'ATEM" },
+      { to: 'power', type: 'POWER', label: 'Alimentazione continua' },
+      { to: 'sd2',   type: 'SD',    label: 'Scheda SD backup' },
+    ]
+  },
+  microfoni: {
+    id: 'microfoni', name: 'Microfoni Shure ×4', shortName: 'Microfoni', icon: '🎙️',
+    category: 'audio', catLabel: 'Audio',
+    desc: '4 microfoni professionali',
+    connections: [
+      { to: 'rodecaster', type: 'XLR', label: 'Ingresso XLR Rodecaster' },
+    ]
+  },
+  cuffie: {
+    id: 'cuffie', name: 'Cuffie ×4', shortName: 'Cuffie', icon: '🎧',
+    category: 'audio', catLabel: 'Audio',
+    desc: '4 cuffie per monitoraggio',
+    connections: [
+      { to: 'rodecaster', type: 'AUX', label: 'Monitor audio Rodecaster' },
+    ]
+  },
+  monitor1: {
+    id: 'monitor1', name: 'Monitor Regia', shortName: 'Monitor A', icon: '🖥️',
+    category: 'video', catLabel: 'Video e Switching',
+    desc: 'Preview ATEM per regia',
+    connections: [
+      { to: 'atem', type: 'HDMI', label: "Preview dall'ATEM" },
+    ]
+  },
+  monitor2: {
+    id: 'monitor2', name: 'Monitor MacBook', shortName: 'Monitor B', icon: '🖥️',
+    category: 'computer', catLabel: 'Computer e Storage',
+    desc: 'Display esterno MacBook',
+    connections: [
+      { to: 'macbook', type: 'HDMI', label: 'Display dal MacBook' },
+    ]
+  },
+  harddisk: {
+    id: 'harddisk', name: 'Samsung T7 Shield', shortName: 'Hard Disk', icon: '💾',
+    category: 'computer', catLabel: 'Computer e Storage',
+    desc: 'Storage esterno principale',
+    connections: [
+      { to: 'atem',    type: 'USB-C', label: "Registrazione dall'ATEM" },
+      { to: 'macbook', type: 'USB-C', label: 'Storage dal MacBook' },
+    ]
+  },
+  ipad: {
+    id: 'ipad', name: 'iPad', shortName: 'iPad', icon: '📱',
+    category: 'computer', catLabel: 'Computer e Storage',
+    desc: 'Schema set e Procreate',
+    connections: [
+      { to: 'tablet', type: 'SYNC',  label: 'Sincronizzazione testi' },
+      { to: 'power',  type: 'POWER', label: 'Alimentazione' },
+    ]
+  },
+  tablet: {
+    id: 'tablet', name: 'Tablet Teleprompter', shortName: 'Teleprompter', icon: '📋',
+    category: 'computer', catLabel: 'Computer e Storage',
+    desc: 'Gestione testo teleprompter',
+    connections: [
+      { to: 'ipad',  type: 'SYNC',  label: 'Sync testi da iPad' },
+      { to: 'power', type: 'POWER', label: 'Alimentazione' },
+    ]
+  },
+  sd1: {
+    id: 'sd1', name: 'SD Card Sony', shortName: 'SD Sony', icon: '🗂️',
+    category: 'computer', catLabel: 'Computer e Storage',
+    desc: 'Backup registrazione Sony',
+    connections: [
+      { to: 'sony', type: 'SD', label: 'Backup in Sony A7 IV' },
+    ]
+  },
+  sd2: {
+    id: 'sd2', name: 'SD Card Panasonic', shortName: 'SD Panasonic', icon: '🗂️',
+    category: 'computer', catLabel: 'Computer e Storage',
+    desc: 'Backup registrazione Panasonic',
+    connections: [
+      { to: 'panasonic', type: 'SD', label: 'Backup in Panasonic S5' },
+    ]
+  },
+  power: {
+    id: 'power', name: 'Alimentazione / Ciabatte', shortName: 'Corrente', icon: '⚡',
+    category: 'power', catLabel: 'Alimentazione',
+    desc: '4 prolunghe + ciabatte',
+    connections: [
+      { to: 'atem',      type: 'POWER', label: 'ATEM Mini Pro ISO' },
+      { to: 'rodecaster',type: 'POWER', label: 'Rodecaster Pro II' },
+      { to: 'macbook',   type: 'POWER', label: 'MacBook Pro' },
+      { to: 'sony',      type: 'POWER', label: 'Sony A7 IV' },
+      { to: 'panasonic', type: 'POWER', label: 'Panasonic S5' },
+      { to: 'ipad',      type: 'POWER', label: 'iPad' },
+      { to: 'tablet',    type: 'POWER', label: 'Tablet Teleprompter' },
+    ]
+  },
+};
+
+const CHECKLIST = [
+  { cat: '🔌 Cavi e Alimentazione', items: ['3–4 cavi HDMI','3–4 cavi USB-C','4 cavi XLR','4 cavi AUX + prolunghe','2 adattatori HDMI','4 prolunghe elettriche','4 adattatori spina','2–3 ciabatte elettriche'] },
+  { cat: '🎛️ Audio', items: ['4 microfoni Shure','4 cuffie','Rodecaster Pro II'] },
+  { cat: '🎬 Video e Switching', items: ['ATEM Mini Pro ISO','2–3 monitor','1 scheda acquisizione HDMI'] },
+  { cat: '💻 Computer e Storage', items: ['MacBook Pro 2020','Hard Disk Samsung T7 Shield','1–2 schede SD (backup)','iPad (schema set)','Tablet (teleprompter)'] },
+  { cat: '📷 Camere', items: ['Sony A7 IV','Panasonic S5','Teleprompter SmallRig'] },
+  { cat: '💡 Illuminazione', items: ['Softbox Aputure 85cm','Softbox Neewer 90cm','Amaran 25c','Amaran 200x','Amaran 100x','Amaran 100d','2× Aputure MC','Amaran 25 Cq'] },
+  { cat: '🔩 Supporti e Accessori', items: ['2 C-Stand','2–3 light stand','2–3 treppiedi','2 magic arm','Piastre SmallRig'] },
+];
+
+const MACRO = [
+  { icon: '☑', label: 'Verifica Checklist', sub: 'Almeno 1 giorno prima' },
+  { icon: '🔋', label: 'Caricamento Dispositivi', sub: 'In ordine consigliato' },
+  { icon: '📐', label: 'Schema del Set', sub: 'Procreate su iPad' },
+  { icon: '🏗️', label: 'Montaggio Set', sub: 'Segui schema' },
+  { icon: '🔌', label: 'Collegamento Dispositivi', sub: 'Audio, Video, Computer' },
+  { icon: '🔊', label: 'Prove Generali', sub: 'Audio, video, luci, backup' },
+  { icon: '💾', label: 'Controllo Backup', sub: 'HDD, SD Rodecaster, SD camere' },
+  { icon: '🧹', label: 'Riordino del Set', sub: 'Cavi, arredi, pulizia scena' },
+  { icon: '🔴', label: 'Spegnimento e Smontaggio', sub: 'In ordine consigliato' },
+];
+
+const MICRO = [
+  { type: 'bullets', content: ['Spuntare la checklist almeno <strong>1 giorno prima</strong> della registrazione.','In caso di assenza o malfunzionamento, <strong>segnalare subito</strong> per sostituzione o ricarica.'] },
+  { type: 'steps', content: ['Aputure MC','Tablet (teleprompter)','Amaran 25c','iPad','MacBook Pro','Batterie videocamere','Cuffie Bose'] },
+  { type: 'bullets', content: ['Usare <strong>Procreate su iPad</strong> per disegnare lo schema.','Indicare posizione di luci, camere, microfoni, monitor.','Salvare file con <strong>data + scopo</strong> (es. "2025-04-03 – Intervista CEO").'] },
+  { type: 'steps', content: ['C-Stand (luci principali)','Light stand (softbox, fill light)','Treppiedi (videocamere)','Magic arm (monitor o teleprompter)','Aputure MC (luci ambiente/effetti)','Amaran 25c, 200x, 100x, 100d','Posizionamento teleprompter','Arredi di scena (sedie, sfondo, tavolo…)'] },
+  { type: 'connections', content: [
+    { device: '🎛️ Rodecaster Pro II', items: [{ label: 'Microfoni (XLR)', badge: 'XLR' },{ label: 'Cuffie (AUX + prolunghe)', badge: 'AUX' },{ label: 'Computer (USB-C)', badge: 'USBC' },{ label: "ATEM (RCA out → mini jack in)", badge: 'RCA' },{ label: 'Corrente', badge: 'POWER' }] },
+    { device: '🎬 ATEM Mini Pro ISO', items: [{ label: 'Camere (HDMI)', badge: 'HDMI' },{ label: 'Monitor (HDMI)', badge: 'HDMI' },{ label: 'Hard disk (USB-C)', badge: 'USBC' },{ label: 'Corrente', badge: 'POWER' }] },
+    { device: '💻 MacBook Pro', items: [{ label: 'Alimentazione', badge: 'POWER' },{ label: 'Monitor esterno', badge: 'HDMI' },{ label: 'Hard disk esterno', badge: 'USBC' }] },
+  ]},
+  { type: 'checks', content: ['Livelli audio su Rodecaster','Segnale video corretto su ATEM e monitor','Funzionamento videocamere','Luminosità e temperatura colore luci','Teleprompter attivo','Disponibilità backup (SD, hard disk, Mac)'] },
+  { type: 'bullets', content: ['Hard disk esterno Samsung T7','SD nel Rodecaster Pro II','SD nelle videocamere (Sony + Panasonic)'] },
+  { type: 'bullets', content: ['Eliminare cavi visibili in camera','Sistemare arredi di scena','Pulire la scena'] },
+  { type: 'steps', content: ['Spegnere luci','Spegnere videocamere','Spegnere Rodecaster','Spegnere MacBook e ATEM','Disconnettere e smontare progressivamente','Riavvolgere e riporre i cavi','Staccare tutte le spine dalle ciabatte','Spegnere singoli dispositivi','Staccare prese singoli dispositivi dalle ciabatte','Riportare condizionatore in modalità deumidificatore'] },
+];
+
+// ──────────────────────────────────────────────
+// STATE (persisted to localStorage)
+// ──────────────────────────────────────────────
+let checkState = {};
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('sopChecklist');
+    if (saved) checkState = JSON.parse(saved);
+  } catch(e) { checkState = {}; }
+}
+
+function saveState() {
+  try { localStorage.setItem('sopChecklist', JSON.stringify(checkState)); } catch(e) {}
+}
+
+// ──────────────────────────────────────────────
+// NAV
+// ──────────────────────────────────────────────
+function showSection(id, label) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('btn-' + id).classList.add('active');
+  document.getElementById('sectionLabel').textContent = label || id;
+}
+
+// ──────────────────────────────────────────────
+// DEVICE LIST
+// ──────────────────────────────────────────────
+function renderDeviceList() {
+  const categories = [
+    { key: 'video',    label: '🎬 Video e Switching' },
+    { key: 'audio',    label: '🎙️ Audio' },
+    { key: 'computer', label: '💻 Computer e Storage' },
+    { key: 'power',    label: '⚡ Alimentazione' },
+  ];
+
+  const list = document.getElementById('deviceList');
+  list.innerHTML = categories.map(cat => {
+    const devs = Object.values(DEVICES).filter(d => d.category === cat.key);
+    return `
+      <div class="cat-label">${cat.label}</div>
+      ${devs.map(d => `
+        <div class="device-item cat-${d.category}" id="ditem-${d.id}" onclick="openDeviceSheet('${d.id}')">
+          <div class="d-icon">${d.icon}</div>
+          <div class="d-info">
+            <div class="d-name">${d.name}</div>
+            <div class="d-cat">${d.connections.length} collegament${d.connections.length !== 1 ? 'i' : 'o'}</div>
+          </div>
+          <span class="d-chevron">›</span>
+        </div>
+      `).join('')}
+    `;
+  }).join('');
+}
+
+// ──────────────────────────────────────────────
+// DEVICE SHEET
+// ──────────────────────────────────────────────
+function openDeviceSheet(deviceId) {
+  const device = DEVICES[deviceId];
+  if (!device) return;
+
+  // Haptic feedback (iOS)
+  if (window.navigator && window.navigator.vibrate) navigator.vibrate(5);
+
+  // Header
+  document.getElementById('sheetHeader').innerHTML = `
+    <div class="sheet-device-icon">${device.icon}</div>
+    <div>
+      <div class="sheet-title">${device.name}</div>
+      <div class="sheet-desc">${device.desc}</div>
+    </div>
+  `;
+
+  // Body
+  const conns = device.connections;
+  let html = `<div class="conn-section-label">${conns.length} collegament${conns.length !== 1 ? 'i' : 'o'}</div>`;
+
+  conns.forEach(conn => {
+    const target = DEVICES[conn.to];
+    const badgeClass = 'badge-' + conn.type.replace(/[^A-Za-z]/g, '');
+    const displayType = conn.type === 'USB-C' ? 'USB‑C' : conn.type;
+    html += `
+      <div class="conn-row" onclick="openDeviceSheet('${conn.to}'); void 0">
+        <div class="conn-row-icon">${target ? target.icon : '❓'}</div>
+        <div class="conn-row-info">
+          <div class="conn-row-name">${target ? target.name : conn.to}</div>
+          <div class="conn-row-label">${conn.label}</div>
+        </div>
+        <span class="${badgeClass} conn-badge">${displayType}</span>
+      </div>
+    `;
+  });
+
+  document.getElementById('sheetBody').innerHTML = html;
+
+  // Show
+  document.getElementById('sheetOverlay').classList.add('visible');
+  setTimeout(() => document.getElementById('deviceSheet').classList.add('visible'), 10);
+}
+
+function closeSheet() {
+  document.getElementById('deviceSheet').classList.remove('visible');
+  document.getElementById('sheetOverlay').classList.remove('visible');
+}
+
+// ──────────────────────────────────────────────
+// CHECKLIST
+// ──────────────────────────────────────────────
+function renderChecklist() {
+  const wrap = document.getElementById('checklistWrap');
+  wrap.innerHTML = CHECKLIST.map((cat, ci) => {
+    const total = cat.items.length;
+    const done = cat.items.filter((_, ii) => checkState[`${ci}-${ii}`]).length;
+    const pct = Math.round(done / total * 100);
+    return `
+      <div class="cl-card" id="clcard-${ci}">
+        <div class="cl-card-head" onclick="toggleCard(${ci})">
+          <div class="cl-card-icon">${cat.cat.split(' ')[0]}</div>
+          <div style="flex:1">
+            <div class="cl-card-title">${cat.cat.slice(cat.cat.indexOf(' ')+1)}</div>
+            <div class="cl-card-count">${done}/${total} · ${pct}%</div>
+          </div>
+          <span class="cl-card-chevron">›</span>
+        </div>
+        <div class="cl-items-wrap">
+          ${cat.items.map((item, ii) => {
+            const key = `${ci}-${ii}`;
+            const isDone = !!checkState[key];
+            return `
+              <div class="cl-item${isDone ? ' done' : ''}" onclick="toggleCheck('${key}')">
+                <div class="cb${isDone ? ' done' : ''}">${isDone ? '✓' : ''}</div>
+                <div class="cl-text">${item}</div>
+              </div>
+            `;
+          }).join('')}
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleCard(ci) {
+  document.getElementById('clcard-' + ci).classList.toggle('collapsed');
+}
+
+function toggleCheck(key) {
+  if (window.navigator && window.navigator.vibrate) navigator.vibrate(3);
+  checkState[key] = !checkState[key];
+  saveState();
+  renderChecklist();
+}
+
+function resetChecklist() {
+  if (!confirm('Resettare tutta la checklist?')) return;
+  checkState = {};
+  saveState();
+  renderChecklist();
+}
+
+// ──────────────────────────────────────────────
+// PROCEDURE
+// ──────────────────────────────────────────────
+function renderProcedure() {
+  const wrap = document.getElementById('procedureWrap');
+  wrap.innerHTML = MACRO.map((m, i) => `
+    <div class="macro-step" id="macrostep-${i}" onclick="openMicroSheet(${i})">
+      <div class="step-num">${i+1}</div>
+      <div style="flex:1">
+        <div class="step-label">${m.icon} ${m.label}</div>
+        <div class="step-sub">${m.sub}</div>
+      </div>
+      <span class="step-chevron">›</span>
+    </div>
+  `).join('');
+}
+
+function openMicroSheet(index) {
+  if (window.navigator && window.navigator.vibrate) navigator.vibrate(5);
+
+  const m = MICRO[index];
+  const macro = MACRO[index];
+
+  // Header
+  document.getElementById('sheetHeader').innerHTML = `
+    <div class="sheet-device-icon" style="font-size:24px;">${macro.icon}</div>
+    <div>
+      <div class="sheet-title">${macro.label}</div>
+      <div class="sheet-desc">Step ${index + 1} di ${MACRO.length} · ${macro.sub}</div>
+    </div>
+  `;
+
+  let html = '';
+
+  if (m.type === 'steps') {
+    html = m.content.map((step, i) => `
+      <div class="micro-step">
+        <div class="micro-step-num">${i+1}</div>
+        <div class="micro-step-text">${step}</div>
+      </div>
+    `).join('');
+  } else if (m.type === 'bullets' || m.type === 'checks') {
+    html = m.content.map(item => `
+      <div class="micro-bullet"><div class="micro-bullet-text">${item}</div></div>
+    `).join('');
+  } else if (m.type === 'connections') {
+    html = m.content.map(block => `
+      <div class="connection-block">
+        <div class="connection-block-title">${block.device}</div>
+        ${block.items.map(item => `
+          <div class="connection-block-item">
+            <span class="arrow">→</span>
+            <span class="conn-badge badge-${item.badge}">${item.badge === 'USBC' ? 'USB‑C' : item.badge}</span>
+            <span>${item.label}</span>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('sheetBody').innerHTML = html;
+
+  // Show prev/next navigation
+  const nav = `
+    <div style="display:flex; gap:8px; margin-top:20px;">
+      ${index > 0 ? `<button onclick="openMicroSheet(${index-1})" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;">← Precedente</button>` : ''}
+      ${index < MACRO.length-1 ? `<button onclick="openMicroSheet(${index+1})" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;">Successivo →</button>` : ''}
+    </div>
+  `;
+  document.getElementById('sheetBody').innerHTML += nav;
+
+  document.getElementById('sheetOverlay').classList.add('visible');
+  setTimeout(() => document.getElementById('deviceSheet').classList.add('visible'), 10);
+}
+
+// ──────────────────────────────────────────────
+// INSTALL BANNER
+// ──────────────────────────────────────────────
+function checkInstallBanner() {
+  // Show only if NOT already installed as PWA and not dismissed
+  const isStandalone = window.navigator.standalone === true
+    || window.matchMedia('(display-mode: standalone)').matches;
+  const dismissed = localStorage.getItem('installDismissed');
+  if (!isStandalone && !dismissed) {
+    setTimeout(() => document.getElementById('installBanner').classList.add('show'), 1500);
+  }
+}
+
+function dismissBanner() {
+  document.getElementById('installBanner').classList.remove('show');
+  try { localStorage.setItem('installDismissed', '1'); } catch(e) {}
+}
+
+// ──────────────────────────────────────────────
+// SWIPE TO CLOSE SHEET
+// ──────────────────────────────────────────────
+let touchStartY = 0;
+const sheet = document.getElementById('deviceSheet');
+
+sheet.addEventListener('touchstart', e => {
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+sheet.addEventListener('touchmove', e => {
+  const dy = e.touches[0].clientY - touchStartY;
+  if (dy > 0) sheet.style.transform = `translateY(${dy}px)`;
+}, { passive: true });
+
+sheet.addEventListener('touchend', e => {
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  sheet.style.transform = '';
+  if (dy > 80) closeSheet();
+}, { passive: true });
+
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
+loadState();
+renderDeviceList();
+renderChecklist();
+renderProcedure();
+checkInstallBanner();
+</script>
+
+<!-- Service Worker registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+
+</body>
+</html>
